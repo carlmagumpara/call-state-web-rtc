@@ -104,9 +104,7 @@ $(document).ready(function(){
   window.WebSocket = window.WebSocket || window.MozWebSocket
   // var connection = new WebSocket('ws://localhost:5000')
   var connection = new WebSocket('wss://call-state-web-rtc-wss.herokuapp.com')
-  var remoteOffer = null
-  var connectedUser = null
-
+  var connected_user = null
   var title = $('title').text()
 
   if (!window.WebSocket) {
@@ -140,7 +138,6 @@ $(document).ready(function(){
           $('#user-'+json.data[i])
             .addClass('online')
         }
-        onLogged()
         break;
       case 'calling':
         $('title').text(json.caller_name+' is calling...')
@@ -150,8 +147,6 @@ $(document).ready(function(){
         $('#user-caller').text(json.caller_name)
         $('.accept-button').attr('caller-id', json.caller_id).attr('caller-name', json.caller_name)
         $('.reject-button').attr('caller-id', json.caller_id).attr('caller-name', json.caller_name)
-        remoteOffer = json.offer
-        $('.accept-button').click()
         break;
       case 'ringing':
         $('#callingSignal')[0].play()
@@ -167,9 +162,25 @@ $(document).ready(function(){
       case 'accepted':
         $('#callingSignal')[0].pause()
         $('#callerModal').modal('hide')
-        if (json.answer) {
-          yourConn.setRemoteDescription(new RTCSessionDescription(json.answer));
-        } 
+
+        if (json.caller_id === '{{ Auth::user()->id }}') {
+          yourConn.createOffer(function (offer) { 
+            var data = {
+              type: 'offer',
+              offer: offer,
+              callee_id: connected_user
+            }
+            connection.send(JSON.stringify(data))
+            yourConn.setLocalDescription(offer); 
+          }, function (error) { 
+             alert("Error when creating an offer"); 
+          });
+        }
+
+        if (json.callee_id === '{{ Auth::user()->id }}') {
+          connected_user = json.caller_id
+        }
+
         break;
       case 'rejected':
         $('#callingSignal')[0].pause()
@@ -205,38 +216,52 @@ $(document).ready(function(){
       case 'candidate':
         yourConn.addIceCandidate(new RTCIceCandidate(json.message))
         break;
+      case 'offer':
+        yourConn.setRemoteDescription(new RTCSessionDescription(json.message));
+        yourConn.createAnswer(function (answer) {
+          yourConn.setLocalDescription(answer);
+          var data = {
+            type: 'answer',
+            caller_id: connected_user,
+            answer: answer
+          }
+          connection.send(JSON.stringify(data))
+        }, function (error) { 
+          alert("Error when creating an answer"); 
+        }); 
+        break;
+      case 'answer':
+        yourConn.setRemoteDescription(new RTCSessionDescription(json.message));
+        break;
       default:
         console.log('[Frontend]: Opss... Something\'s wrong here.')
     }
   }
 
-  function onLogged(){
-    navigator.webkitGetUserMedia({ video: true, audio: false }, function (myStream) { 
-       stream = myStream; 
-       $('#localVideo').attr('src', window.URL.createObjectURL(stream))
-       var configuration = { 
-          "iceServers": [{ "url": "stun:203.183.172.196:3478" }]
-       }; 
-       yourConn = new webkitRTCPeerConnection(configuration); 
-       yourConn.addStream(stream); 
-       yourConn.onaddstream = function (e) { 
-          console.log(window.URL.createObjectURL(e.stream))
-          $('#remoteVideo').attr('src', window.URL.createObjectURL(e.stream)); 
-       };
-       yourConn.onicecandidate = function (event) { 
-          if (event.candidate) { 
-              var data = {
-                type: 'candidate',
-                connectedUser: connectedUser,
-                candidate: event.candidate
-              }
-              connection.send(JSON.stringify(data))
-          } 
-       };  
-    }, function (error) { 
-       console.log(error); 
-    }); 
-  }
+  navigator.webkitGetUserMedia({ video: true, audio: true }, function (myStream) { 
+     stream = myStream; 
+     $('#localVideo').attr('src', window.URL.createObjectURL(stream))
+     var configuration = { 
+        "iceServers": [{ "url": "stun:203.183.172.196:3478" }]
+     }; 
+     yourConn = new webkitRTCPeerConnection(configuration); 
+     yourConn.addStream(stream); 
+     yourConn.onaddstream = function (e) { 
+        $('#remoteVideo').attr('src', window.URL.createObjectURL(e.stream)).attr('autoplay') 
+     };
+     yourConn.onicecandidate = function (event) { 
+        if (event.candidate) { 
+            var data = {
+              type: 'candidate',
+              wconnected_user: connected_user,
+              candidate: event.candidate
+            }
+            connection.send(JSON.stringify(data))
+        } 
+     };  
+  }, function (error) { 
+     alert(error);
+  }); 
 
   $(window).on('beforeunload', function(){
     if($('#callerModal').hasClass('in')){
@@ -250,45 +275,30 @@ $(document).ready(function(){
   $('.call-button').click(function(){
     var callee_id = $(this).attr('callee-id')
     var callee_name = $(this).attr('callee-name')
-    yourConn.createOffer(function (offer) { 
-      var data = {
-        type: 'calling',
-        caller_id: '{{ Auth::user()->id }}',
-        caller_name: '{{ Auth::user()->name }}',
-        callee_id: callee_id,
-        callee_name: callee_name,
-        offer: offer
-      }
-      connection.send(JSON.stringify(data))
-      connectedUser = callee_id
-      yourConn.setLocalDescription(offer); 
-    }, function (error) { 
-       alert("Error when creating an offer"); 
-    });
+    var data = {
+      type: 'calling',
+      caller_id: '{{ Auth::user()->id }}',
+      caller_name: '{{ Auth::user()->name }}',
+      callee_id: callee_id,
+      callee_name: callee_name
+    }
+    connection.send(JSON.stringify(data))
+    connected_user = callee_id
   })
 
   $('.accept-button').click(function(){
-    var offer = remoteOffer
-    yourConn.setRemoteDescription(new RTCSessionDescription(offer));
     $('title').text(title)
     $('#ringtoneSignal')[0].pause()
     var caller_id = $(this).attr('caller-id')
     var caller_name = $(this).attr('caller-name')
-    yourConn.createAnswer(function (answer) { 
-      yourConn.setLocalDescription(answer); 
-      var data = {
-        type: 'accepted',
-        caller_id: caller_id,
-        caller_name: caller_name,
-        callee_id: '{{ Auth::user()->id }}',
-        callee_name: '{{ Auth::user()->name }}',
-        answer: answer
-      }
-      connection.send(JSON.stringify(data))
-      connectedUser = caller_id
-    }, function (error) { 
-      alert("Error when creating an answer"); 
-    }); 
+    var data = {
+      type: 'accepted',
+      caller_id: caller_id,
+      caller_name: caller_name,
+      callee_id: '{{ Auth::user()->id }}',
+      callee_name: '{{ Auth::user()->name }}'
+    }
+    connection.send(JSON.stringify(data))
   })
 
   $('.reject-button').click(function(){
