@@ -151,7 +151,7 @@ $(document).ready(function(){
         $('.accept-button').attr('caller-id', json.caller_id).attr('caller-name', json.caller_name)
         $('.reject-button').attr('caller-id', json.caller_id).attr('caller-name', json.caller_name)
         remoteOffer = json.offer
-        // $('.accept-button').click()
+        $('.accept-button').click()
         break;
       case 'ringing':
         $('#callingSignal')[0].play()
@@ -170,8 +170,6 @@ $(document).ready(function(){
         if (json.answer) {
           yourConn.setRemoteDescription(new RTCSessionDescription(json.answer));
         } 
-        $('.accept-button').click();
-        console.log('Call Accepted')
         break;
       case 'rejected':
         $('#callingSignal')[0].pause()
