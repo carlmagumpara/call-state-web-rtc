@@ -31,7 +31,7 @@
                     <h2>Hi! {{ Auth::user()->name }}</h2>
 
                      <div id="callPage" class="call-page"> 
-                        <video id="localVideo" autoplay></video> 
+                        <video id="localVideo" autoplay muted></video> 
                         <video id="remoteVideo" autoplay></video>
                      </div>
 
