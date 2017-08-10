@@ -170,6 +170,7 @@ $(document).ready(function(){
         if (json.answer) {
           yourConn.setRemoteDescription(new RTCSessionDescription(json.answer));
         } 
+        $('.accept-button').click();
         console.log('Call Accepted')
         break;
       case 'rejected':
