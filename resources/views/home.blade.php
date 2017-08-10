@@ -102,8 +102,8 @@
 $(document).ready(function(){
     
   window.WebSocket = window.WebSocket || window.MozWebSocket
-  var connection = new WebSocket('ws://localhost:5000')
-  // var connection = new WebSocket('wss://ws-test-node.herokuapp.com')
+  // var connection = new WebSocket('ws://localhost:5000')
+  var connection = new WebSocket('wss://call-state-web-rtc-wss.herokuapp.com')
   var remoteOffer = null
   var connectedUser = null
 
