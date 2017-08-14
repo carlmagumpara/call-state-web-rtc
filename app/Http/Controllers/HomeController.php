@@ -31,9 +31,9 @@ class HomeController extends Controller
         return view('home',['users' => $this->users->all()]);
     }
 
-    public function videochat()
+    public function videochat($roomId)
     {
-        return 'Video Chat';
+        return view('videochat',['roomId' => $roomId]);
     }
 
 }

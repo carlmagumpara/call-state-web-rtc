@@ -30,4 +30,4 @@ Route::get('/admin/register' ,'AdminAuth\RegisterController@showRegistrationForm
 Route::post('/admin/register' ,'AdminAuth\RegisterController@register');
 
 Route::get('/home', ['as' => 'user.home', 'uses' => 'HomeController@index']);
-Route::get('/videochat', ['as' => 'user.videochat', 'uses' => 'HomeController@videochat']);
+Route::get('/videochat/{roomId}', ['as' => 'user.videochat', 'uses' => 'HomeController@videochat']);
