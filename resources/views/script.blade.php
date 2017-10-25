@@ -3,17 +3,16 @@
   $(document).ready(function(){
 
     window.WebSocket = window.WebSocket || window.MozWebSocket
-    // var connection = new WebSocket('ws://localhost:5000')
-    var connection = new WebSocket('wss://call-state-web-rtc-wss.herokuapp.com')
+    var connection = new WebSocket('ws://localhost:5000')
+    // var connection = new WebSocket('wss://call-state-web-rtc-wss.herokuapp.com')
     var connected_user = null
     var title = $('title').text()
+    var connected_user_name = null
 
-    var roomId = ''
-
-   var configuration = { 
+    var configuration = { 
       "iceServers": [{ "url": "stun:203.183.172.196:3478" }]
-   }; 
-   yourConn = new webkitRTCPeerConnection(configuration); 
+    }; 
+    yourConn = new webkitRTCPeerConnection(configuration); 
 
     if (!window.WebSocket) {
       console.log('Sorry, but your browser doesn\'t support WebSocket.')
@@ -25,7 +24,6 @@
         user_id: '{{ Auth::user()->id }}'
       }
       connection.send(JSON.stringify(data))
-      onConnected()
     }
 
     connection.onerror = function (error) {
@@ -56,14 +54,16 @@
           $('#user-caller').text(json.caller_name)
           $('.accept-button').attr('caller-id', json.caller_id).attr('caller-name', json.caller_name)
           $('.reject-button').attr('caller-id', json.caller_id).attr('caller-name', json.caller_name)
-          roomId = json.roomId
+          connected_user = json.caller_id
+          connected_user_name = json.caller_name
           break;
         case 'ringing':
           $('#callingSignal')[0].play()
           $('#callerModal').modal('show')
           $('#user-callee').text(json.callee_name)
           $('.cancel-button').attr('callee-id', json.callee_id)
-          roomId = json.roomId
+          connected_user = json.callee_id
+          connected_user_name = json.callee_name
           break;
         case 'user-is-offline':
           $('#callerModal').modal('hide')
@@ -73,7 +73,21 @@
         case 'accepted':
           $('#callingSignal')[0].pause()
           $('#callerModal').modal('hide')
-          window.location = '/videochat/' + roomId
+          if (json.caller_id === '{{ Auth::user()->id }}') {
+            yourConn.createOffer(function (offer) { 
+              yourConn.setLocalDescription(offer);
+              var data = {
+                type: 'offer',
+                offer: offer,
+                callee_id: connected_user
+              }
+              connection.send(JSON.stringify(data))
+            }, function (error) { 
+               alert("Error when creating an offer"); 
+            });
+          }
+          $('#name-call').text(connected_user_name)
+          $('#call').modal('show')
           break;
         case 'rejected':
           $('#callingSignal')[0].pause()
@@ -126,32 +140,12 @@
         case 'answer':
           yourConn.setRemoteDescription(new RTCSessionDescription(json.message));
           break;
-        case 'get-room-users':
-          setTimeout(function(){
-            if (json.message[0] === '{{ Auth::user()->id }}') {
-              yourConn.createOffer(function (offer) { 
-                var data = {
-                  type: 'offer',
-                  offer: offer,
-                  callee_id: json.message[1]
-                }
-                connection.send(JSON.stringify(data))
-                yourConn.setLocalDescription(offer); 
-                connected_user = json.message[1]
-              }, function (error) { 
-                 alert("Error when creating an offer"); 
-              });
-            }
-            if (json.message[1] === '{{ Auth::user()->id }}') {
-              connected_user = json.message[0]
-            }
-          }, 3000)
-          setVideochat()
-          break;
         default:
           console.log('[Frontend]: Opss... Something\'s wrong here.')
       }
     }
+
+    setAudio();
 
     $(window).on('beforeunload', function(){
       if($('#callerModal').hasClass('in')){
@@ -217,35 +211,29 @@
       connection.send(JSON.stringify(data)) 
     })
 
-    function onConnected(){
-      var roomIdfromSession = '{{ isset($roomId) ? $roomId : null }}'
-      if (roomIdfromSession != '') {
-        var data = {
-          type: 'get-room-users',
-          roomId: roomIdfromSession
-        }
-        connection.send(JSON.stringify(data))
-      }
-    }
 
-    function setVideochat(){
+     yourConn.onaddstream = function (e) {
+        console.log(e)
+        $('#audio2').attr('src', window.URL.createObjectURL(e.stream)) 
+     };
+
+     yourConn.onicecandidate = function (event) { 
+        console.log(event)
+        if (event.candidate) { 
+          var data = {
+            type: 'candidate',
+            connected_user: connected_user,
+            candidate: event.candidate
+          }
+          connection.send(JSON.stringify(data))
+        } 
+     };  
+
+    function setAudio(){
       navigator.webkitGetUserMedia({ video: true, audio: true }, function (myStream) { 
          stream = myStream; 
-         $('#localVideo').attr('src', window.URL.createObjectURL(stream))
+         $('#audio1').attr('src', window.URL.createObjectURL(stream))
          yourConn.addStream(stream); 
-         yourConn.onaddstream = function (e) { 
-            $('#remoteVideo').attr('src', window.URL.createObjectURL(e.stream)) 
-         };
-         yourConn.onicecandidate = function (event) { 
-            if (event.candidate) { 
-              var data = {
-                type: 'candidate',
-                connected_user: connected_user,
-                candidate: event.candidate
-              }
-              connection.send(JSON.stringify(data))
-            } 
-         };  
       }, function (error) { 
          alert(error);
       }); 

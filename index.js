@@ -48,19 +48,17 @@ wsServer.on('request', function(request) {
           } else {
             var user_status = busyUsers.indexOf(data.callee_id)
             if (user_status === -1) {
-              var roomId = makeRoom()
-              availRooms[roomId] = [data.caller_id, data.callee_id]
               busyUsers.push(data.callee_id)
               busyUsers.push(data.caller_id)
               console.log(busyUsers)
               console.log('['+ new Date().toLocaleString() +'] Calling: Caller: ' +data.caller_id+ ' & Callee: '+ data.callee_id)
               for (var i = 0; i < connections.length; i++) {
                 if (connections[i][1] == data.callee_id) {
-                  var json = JSON.stringify({ type:'calling', caller_name: data.caller_name, caller_id: data.caller_id, roomId: roomId })
+                  var json = JSON.stringify({ type:'calling', caller_name: data.caller_name, caller_id: data.caller_id})
                   connections[i][0].sendUTF(json)
                 }
               }
-              var json = JSON.stringify({ type:'ringing', callee_name: data.callee_name, callee_id: data.callee_id, roomId: roomId })
+              var json = JSON.stringify({ type:'ringing', callee_name: data.callee_name, callee_id: data.callee_id})
               connection.sendUTF(json)
               callTimeouts['user_' + data.caller_id] =  setTimeout(function(){
                 console.log('['+ new Date().toLocaleString() +'] Not Answered: Caller: ' +data.caller_id+ ' & Callee: '+ data.callee_id)
@@ -145,16 +143,6 @@ wsServer.on('request', function(request) {
             }
           }
           break
-        case 'get-room-users':
-          for (var i = 0; i < availRooms[data.roomId].length; i++) {
-            for (var j = 0; j < connections.length; j++) {
-              if (connections[j][1] == availRooms[data.roomId][i]) {
-                var json = JSON.stringify({ type:'get-room-users', message: availRooms[data.roomId] })
-                connections[j][0].sendUTF(json)
-              }
-            }
-          }
-          break
         default:
           console.log('[Server]: Opss... Something\'s wrong here.')
       }
@@ -182,14 +170,6 @@ wsServer.on('request', function(request) {
       }, userDisconnectTimeout)
     }
   })
-
-  function makeRoom() {
-    var random = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    for (var i = 0; i < 10; i++)
-        random += possible.charAt(Math.floor(Math.random() * possible.length));
-    return random;
-  };
 
   function updateActiveUsers(){
     var json = JSON.stringify({ type:'subscribe', data: users })

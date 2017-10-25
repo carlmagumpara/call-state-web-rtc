@@ -80,6 +80,27 @@
     </div>
   </div>
 
+  <div class="modal fade" id="call" data-controls-modal="defaultModal"  data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-body">
+            <div id="audio">
+              <div>
+                <audio style="width: 100%" id="audio1" autoplay muted></audio>
+              </div>
+              <div>
+                <h3><span id="name-call"></span></h3>
+                <h5>ONGOING...</h5>
+                <audio style="width: 100%" id="audio2" autoplay controls></audio>
+              </div>
+            </div>
+            <div class="center call-buttons">
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <audio id="callingSignal" loop>
