@@ -3,8 +3,8 @@
   $(document).ready(function(){
 
     window.WebSocket = window.WebSocket || window.MozWebSocket
-    var connection = new WebSocket('ws://localhost:5000')
-    // var connection = new WebSocket('wss://call-state-web-rtc-wss.herokuapp.com')
+    // var connection = new WebSocket('ws://localhost:5000')
+    var connection = new WebSocket('wss://call-state-web-rtc-wss.herokuapp.com')
     var connected_user = null
     var title = $('title').text()
     var connected_user_name = null
